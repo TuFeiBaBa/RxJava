@@ -85,15 +85,21 @@ implements Runnable, Callable<Object>, Disposable {
     }
 
     public void setFuture(Future<?> f) {
+        //这里的无限for循环，有机会进行第二次？
+        //是不是如果，进行到1，2的时候，其他并发线程，刚好抢在3之前，获得了FUTURE_INDEX的操作权限，改了数据
+        //这时候就会出现3的compareAndSet(FUTURE_INDEX, o, f)
         for (;;) {
             Object o = get(FUTURE_INDEX);
+            //1
             if (o == DONE) {
                 return;
             }
+            //2
             if (o == SYNC_DISPOSED) {
                 f.cancel(false);
                 return;
             }
+            //3
             if (o == ASYNC_DISPOSED) {
                 f.cancel(true);
                 return;

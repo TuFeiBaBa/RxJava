@@ -17,6 +17,18 @@ import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 
 /**
+ * 提供了一个来接收推送式通知的机制
+ * <p>
+ * 在一个Observer调用一个{@link Observable}的{@link Observable#subscribe subscribe}方法，
+ * 首先，这哥Observable会调用{@link #onSubscribe(Disposable)}方法，通过传递一个能够在任何时间里打断取消
+ * 事件序列的{@link Disposable}实例作为参数，{@link #onComplete}方法
+ * 然后，Observable可能会调用这个Observer的{@link #onNext}任意次数，来传递通知。这是规矩。
+ * 最后，这个Observable将会只调用一次Observer的{@link #onComplete}方法，或者调用一次Observer的{@link #onError}
+ * 方法(两者互斥)。
+ * @see <a href="http://reactivex.io/documentation/observable.html">ReactiveX documentation: Observable</a>
+ * @param <T>
+ *          Observer期望观察的事件(事物)的具体类型
+ *
  * Provides a mechanism for receiving push-based notifications.
  * <p>
  * After an Observer calls an {@link Observable}'s {@link Observable#subscribe subscribe} method,

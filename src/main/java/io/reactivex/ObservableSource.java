@@ -15,6 +15,9 @@ package io.reactivex;
 import io.reactivex.annotations.*;
 
 /**
+ * 代表一个基本的、非背压的{@link Observable}源代码基础接口，
+ * 是可被一个{@link Observer}消费的
+ *
  * Represents a basic, non-backpressured {@link Observable} source base interface,
  * consumable via an {@link Observer}.
  *

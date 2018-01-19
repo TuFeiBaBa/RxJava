@@ -16,13 +16,20 @@
 
 package io.reactivex.internal.schedulers;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
 import io.reactivex.Scheduler;
 import io.reactivex.annotations.NonNull;
-import io.reactivex.disposables.*;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.internal.disposables.EmptyDisposable;
-
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
 
 /**
  * Scheduler that creates and caches a set of thread pools and reuses them if possible.
@@ -48,7 +55,7 @@ public final class IoScheduler extends Scheduler {
     static {
         SHUTDOWN_THREAD_WORKER = new ThreadWorker(new RxThreadFactory("RxCachedThreadSchedulerShutdown"));
         SHUTDOWN_THREAD_WORKER.dispose();
-
+        //搞啥子。。最后获取到的不就是Thread.NORM_PRIORITY)
         int priority = Math.max(Thread.MIN_PRIORITY, Math.min(Thread.MAX_PRIORITY,
                 Integer.getInteger(KEY_IO_PRIORITY, Thread.NORM_PRIORITY)));
 
@@ -94,6 +101,10 @@ public final class IoScheduler extends Scheduler {
                 return SHUTDOWN_THREAD_WORKER;
             }
             while (!expiringWorkerQueue.isEmpty()) {
+//                E  peek()
+//                Gets but does not remove the element at the head of the queue.
+//                E  poll()
+//                Gets and removes the element at the head of the queue, or returns null if there is no element in the queue.
                 ThreadWorker threadWorker = expiringWorkerQueue.poll();
                 if (threadWorker != null) {
                     return threadWorker;

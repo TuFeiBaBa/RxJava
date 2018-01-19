@@ -15,6 +15,9 @@ package io.reactivex;
 import io.reactivex.annotations.*;
 
 /**
+ *  * 一个功能性的接口，具有一个{@code subscribe()}方法，该方法可以接收一个{@link ObservableEmitter}
+ * 的实例({@link ObservableEmitter}能够推送不同的事件，并能通过安全的方式取消操作)。
+ *
  * A functional interface that has a {@code subscribe()} method that receives
  * an instance of an {@link ObservableEmitter} instance that allows pushing
  * events in a cancellation-safe manner.

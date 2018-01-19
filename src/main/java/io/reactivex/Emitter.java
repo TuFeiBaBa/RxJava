@@ -15,6 +15,8 @@ package io.reactivex;
 import io.reactivex.annotations.NonNull;
 
 /**
+ * 基本接口，用于在各种各样类似发生器(或者说发射器)的源操作符(create, generate)中以推送方式发射信号。
+ *
  * Base interface for emitting signals in a push-fashion in various generator-like source
  * operators (create, generate).
  *

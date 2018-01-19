@@ -48,6 +48,9 @@ public final class RxThreadFactory extends AtomicLong implements ThreadFactory {
 
     @Override
     public Thread newThread(Runnable r) {
+        //AtomicLong atomicLong = new AtomicLong();
+        //get() : 0
+        //incrementAndGet() : 1  //第一次调用得到1，以后每次调用结果均加1
         StringBuilder nameBuilder = new StringBuilder(prefix).append('-').append(incrementAndGet());
 
 //        if (CREATE_TRACE) {

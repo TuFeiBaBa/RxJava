@@ -13,27 +13,115 @@
 
 package io.reactivex;
 
-import java.util.*;
-import java.util.concurrent.*;
-
 import org.reactivestreams.Publisher;
 
-import io.reactivex.annotations.*;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import io.reactivex.annotations.BackpressureKind;
+import io.reactivex.annotations.BackpressureSupport;
+import io.reactivex.annotations.CheckReturnValue;
+import io.reactivex.annotations.Experimental;
+import io.reactivex.annotations.NonNull;
+import io.reactivex.annotations.SchedulerSupport;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.exceptions.Exceptions;
-import io.reactivex.functions.*;
-import io.reactivex.internal.functions.*;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.BiConsumer;
+import io.reactivex.functions.BiFunction;
+import io.reactivex.functions.BiPredicate;
+import io.reactivex.functions.BooleanSupplier;
+import io.reactivex.functions.Cancellable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
+import io.reactivex.functions.Function3;
+import io.reactivex.functions.Function4;
+import io.reactivex.functions.Function5;
+import io.reactivex.functions.Function6;
+import io.reactivex.functions.Function7;
+import io.reactivex.functions.Function8;
+import io.reactivex.functions.Function9;
+import io.reactivex.functions.Predicate;
+import io.reactivex.internal.functions.Functions;
+import io.reactivex.internal.functions.ObjectHelper;
 import io.reactivex.internal.fuseable.ScalarCallable;
-import io.reactivex.internal.observers.*;
-import io.reactivex.internal.operators.flowable.*;
+import io.reactivex.internal.observers.BlockingFirstObserver;
+import io.reactivex.internal.observers.BlockingLastObserver;
+import io.reactivex.internal.observers.ForEachWhileObserver;
+import io.reactivex.internal.observers.FutureObserver;
+import io.reactivex.internal.observers.LambdaObserver;
+import io.reactivex.internal.operators.flowable.FlowableFromObservable;
+import io.reactivex.internal.operators.flowable.FlowableOnBackpressureError;
 import io.reactivex.internal.operators.observable.*;
-import io.reactivex.internal.util.*;
-import io.reactivex.observables.*;
-import io.reactivex.observers.*;
+import io.reactivex.internal.util.ArrayListSupplier;
+import io.reactivex.internal.util.ErrorMode;
+import io.reactivex.internal.util.ExceptionHelper;
+import io.reactivex.internal.util.HashMapSupplier;
+import io.reactivex.observables.ConnectableObservable;
+import io.reactivex.observables.GroupedObservable;
+import io.reactivex.observers.SafeObserver;
+import io.reactivex.observers.TestObserver;
 import io.reactivex.plugins.RxJavaPlugins;
-import io.reactivex.schedulers.*;
+import io.reactivex.schedulers.Schedulers;
+import io.reactivex.schedulers.Timed;
 
 /**
+ * Observable类是非背压的，可以选择不同的值的基本响应式类。它为我们提供了工厂方法，各种中间的操作符和处理各种同步
+ * 或者异步的数据流的能力。
+ * <p>
+ * 该类中的许多操作符，都是接受一个非压力流的基本响应式接口{@code ObservableSource}(s)作为参数。
+ * {@code Observable}它本身也实现了这个接口。
+ * <p>
+ * Observable的操作符的默认运行缓冲区大小为128个元素(参见{@link Flowable#bufferSize()}。我们可以通过
+ * 设置系统参数{@code rx2.buffer-size}进行全局覆盖。然而，大多数操作符都有允许显式地设置其内部缓冲区大小。
+ * <p>
+ * 这个类的实际操作流程，可以使用弹珠图来诠释。以下的图例是这些图的模板。(注：很多操作符，RxJava都提供了弹珠图解释运作流程)。
+ * <p>
+ * <img width="640" height="317" src="https://raw.github.com/wiki/ReactiveX/RxJava/images/rx-operators/legend.png" alt="">
+ * <p>
+ * 该类的设计思想是来源于
+ * <a href="https://github.com/reactive-streams/reactive-streams-jvm">Reactive-Streams design and specification</a>
+ * 但该类了删除所有跟背压相关的基础设计和实施细节，并且替换了{@code org.reactivestreams.Subscription}，
+ * 以{@link Disposable}为取消一个流的主要手段。(注：RxJava1是用Subscription作为取消订阅)
+ * <p>
+ * {@code Observable}遵守下面的协议
+ * <pre><code>
+ *      onSubscribe onNext* (onError | onComplete)?
+ *      (按鄙人的理解，也许是指，可以发送多个onNext，而onError和onComplete只能二选一？？)
+ * </code></pre>
+ * 通过{@code Observer.onSubscribe}提供的{@code Disposable}实例，可以用来切断流。
+ * 与版本1.x的{@code Observable}不同，{@link #subscribe(Observer)}不允许在
+ * 外部取消订阅，并且{@code Observer}实例预计会提供这样的功能。
+ * <p>比如:
+ * <pre><code>
+ * Disposable d = Observable.just("Hello world!")
+ *     .delay(1, TimeUnit.SECONDS)
+ *     .subscribeWith(new DisposableObserver&lt;String&gt;() {
+ *         &#64;Override public void onStart() {
+ *             System.out.println("Start!");
+ *         }
+ *         &#64;Override public void onNext(Integer t) {
+ *             System.out.println(t);
+ *         }
+ *         &#64;Override public void onError(Throwable t) {
+ *             t.printStackTrace();
+ *         }
+ *         &#64;Override public void onComplete() {
+ *             System.out.println("Done!");
+ *         }
+ *     });
+ *
+ *  Thread.sleep(500);
+ *  //现在，事件序列(或者说流)可以通过dispose()取消
+ *  </code></pre>
+ *
  * The Observable class is the non-backpressured, optionally multi-valued base reactive class that
  * offers factory methods, intermediate operators and the ability to consume synchronous
  * and/or asynchronous reactive dataflows.
